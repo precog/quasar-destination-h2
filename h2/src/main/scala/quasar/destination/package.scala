@@ -19,7 +19,6 @@ package quasar.destination
 import slamdata.Predef._
 import quasar.connector.render.RenderConfig
 
-import java.net.URI
 import java.nio.{file => jfile}
 import scala.util.Random
 
@@ -31,7 +30,7 @@ package object h2 {
 
   type Ident = String
 
-  val Redacted: String = "--REDACTED--"
+  val Redacted: String = "<REDACTED>"
 
   val RenderConfigCsv = RenderConfig.Csv()
 
@@ -48,8 +47,8 @@ package object h2 {
   def singleQuoteFragment(f: Fragment) = fr"'" ++ f ++ fr"'"
 
   /** Returns the JDBC connection string corresponding to the given database URI. */
-  def jdbcUri(dbUri: URI): String =
-    s"jdbc:${dbUri}"
+  def jdbcUri(dbUri: String): String =
+    s"jdbc:$dbUri"
 
   def createTempFile[F[_]](prefix: String, suffix: String)(implicit F: Sync[F])
       : F[jfile.Path] =

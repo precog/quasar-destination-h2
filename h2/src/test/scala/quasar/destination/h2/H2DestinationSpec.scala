@@ -26,7 +26,6 @@ import quasar.connector._
 import quasar.connector.destination._
 import quasar.connector.render.RenderConfig
 
-import java.net.URI
 import java.time._
 import scala.Float
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -274,11 +273,10 @@ object H2DestinationSpec extends EffectfulQSpec[IO] with CsvSupport {
     randomAlphaNum[IO](6).map(suffix => s"h2_test_${suffix}")
 
   def runDb[F[_]: Async: ContextShift, A](fa: ConnectionIO[A], uri: String = TestConnectionUrl): F[A] =
-    fa.transact(Transactor.fromDriverManager[F]("org.h2.Driver", jdbcUri(new URI(uri))))
+    fa.transact(Transactor.fromDriverManager[F]("org.h2.Driver", jdbcUri(uri)))
 
-  def config(url: String = TestConnectionUrl, schema: Option[String] = None): Json =
+  def config(url: String = TestConnectionUrl): Json =
     ("connectionUri" := url) ->:
-    ("schema" := schema) ->:
     jEmptyObject
 
   def csv[A](cfg: Json)(f: ResultSink.CreateSink[IO, ColumnType.Scalar] => IO[A]): IO[A] =

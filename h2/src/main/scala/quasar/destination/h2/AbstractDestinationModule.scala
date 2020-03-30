@@ -132,7 +132,6 @@ class AbstractDestinationModule(
           ds.setJdbcUrl(jdbcUri(cfg.connectionUri))
           ds.setDriverClassName(H2DriverFqcn)
           ds.setMaximumPoolSize(ConnectionPoolSize)
-          cfg.schema.foreach(ds.setSchema)
           xa
         }
       }

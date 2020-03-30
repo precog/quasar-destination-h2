@@ -18,30 +18,25 @@ package quasar.destination.h2
 
 import slamdata.Predef._
 
-import java.net.URI
-import scala.util.control.NonFatal
-
 import argonaut._, Argonaut._
+import cats.implicits._
 
-final case class Config(connectionUri: URI, schema: Option[String]) {
+final case class Config(connectionUri: String) {
 
-  def sanitized: Config = this
+  def sanitized: Config = {
+    // Just redacting all settings, not really worth figuring out how to parse all this...
+    val sanitizedUri = {
+      val semiColon = connectionUri.indexOf(";")
+      if (semiColon === -1)
+        connectionUri
+      else
+        connectionUri.substring(0, semiColon) + s";$Redacted"
+    }
+    Config(sanitizedUri)
+  }
 }
 
 object Config {
-  implicit val codecJson: CodecJson[Config] = {
-    implicit val uriDecodeJson: DecodeJson[URI] =
-      DecodeJson(c => c.as[String] flatMap { s =>
-        try {
-          DecodeResult.ok(new URI(s))
-        } catch {
-          case NonFatal(t) => DecodeResult.fail("URI", c.history)
-        }
-      })
-
-    implicit val uriEncodeJson: EncodeJson[URI] =
-      EncodeJson.of[String].contramap(_.toString)
-
-    casecodec2(Config.apply, Config.unapply)("connectionUri", "schema")
-  }
+  implicit val codecJson: CodecJson[Config] =
+    casecodec1(Config.apply, Config.unapply)("connectionUri")
 }
