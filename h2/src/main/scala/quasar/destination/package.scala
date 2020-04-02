@@ -32,7 +32,7 @@ package object h2 {
 
   val Redacted: String = "<REDACTED>"
 
-  val RenderConfigCsv = RenderConfig.Csv()
+  val RenderConfigCsv = RenderConfig.Csv(includeHeader = false)
 
   /** Returns a random alphanumeric string of the specified length. */
   def randomAlphaNum[F[_]: Sync](size: Int): F[String] =
