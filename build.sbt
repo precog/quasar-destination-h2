@@ -28,7 +28,6 @@ lazy val root = project
 
 lazy val h2 = project
   .in(file("h2"))
-  .settings(addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"))
   .settings(publishTestsSettings)
   .settings(
     name := "quasar-destination-h2",
@@ -50,7 +49,6 @@ lazy val h2 = project
 lazy val tableau = project
   .in(file("tableau"))
   .dependsOn(h2 % "compile->compile;test->test")
-  .settings(addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"))
   .settings(
     name := "quasar-destination-tableau",
 
