@@ -94,7 +94,7 @@ object H2CsvCreateSink extends Logging {
       case ColumnType.OffsetDateTime => fr0"TIMESTAMP(3) WITH TIME ZONE".validNel
       case i @ ColumnType.Interval => i.invalidNel
       case ColumnType.Number => fr0"NUMERIC".validNel
-      case ColumnType.String => fr0"NVARCHAR(512)".validNel
+      case ColumnType.String => fr0"VARCHAR".validNel
     }
 
   private def save[F[_]: ContextShift: Effect: MonadResourceErr](path: jfile.Path, bytes: Stream[F, Byte], blocker: Blocker): F[Unit] = {

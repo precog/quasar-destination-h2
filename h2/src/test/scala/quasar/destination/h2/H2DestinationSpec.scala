@@ -141,6 +141,36 @@ object H2DestinationSpec extends EffectfulQSpec[IO] with CsvSupport {
       }
     }
 
+    "table with long strings" >>* {
+      csv(config()) { sink =>
+        val recs = List(
+          ("string" ->> "q" * 1000000) ::
+          HNil)
+
+        drainAndSelect(
+          TestConnectionUrl,
+          "longstrings",
+          sink,
+          Stream.emits(recs)
+        ).map(_ must_=== recs)
+      }
+    }
+
+    "table with special chars" >>* {
+      csv(config()) { sink =>
+        val recs = List(
+          ("string" ->> "На берегу пустынных волн") ::
+          HNil)
+
+        drainAndSelect(
+          TestConnectionUrl,
+          "specialchars",
+          sink,
+          Stream.emits(recs)
+        ).map(_ must_=== recs)
+      }
+    }
+
     "quote table names to prevent injection" >>* {
       csv(config()) { sink =>
         val recs = List(("x" ->> 2.3) :: ("y" ->> 8.1) :: HNil)
