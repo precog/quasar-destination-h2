@@ -21,6 +21,7 @@ import quasar.api.destination.{DestinationError => DE, _}
 import quasar.{concurrent => qc}
 import quasar.connector.MonadResourceErr
 import quasar.connector.destination.{Destination, DestinationModule}
+import quasar.destination.h2.server.H2Server
 
 import java.util.concurrent.Executors
 import scala.concurrent.ExecutionContext
@@ -85,9 +86,11 @@ class AbstractDestinationModule(
 
       connPool <- EitherT.right(boundedPool[F](s"$name-connection-$freshTag", ConnectionPoolSize))
 
-      xaPool <- EitherT.right(unboundedPool[F](s"$name-transact-$freshTag"))
+      blocker <- EitherT.right(unboundedPool[F](s"$name-transact-$freshTag"))
 
-      xa <- EitherT.right(hikariTransactor[F](cfg, connPool, xaPool))
+      _ <- EitherT.right(H2Server[F](cfg.server, blocker))
+
+      xa <- EitherT.right(hikariTransactor[F](cfg, connPool, blocker))
 
       _ <- EitherT(Resource.liftF(validateConnection.transact(xa) recover {
         case NonFatal(ex: Exception) =>
@@ -97,7 +100,7 @@ class AbstractDestinationModule(
       _ <- EitherT.right[InitErr](Resource.liftF(Sync[F].delay(
         log.info(s"Initialized $name destination: tag = $freshTag, config = ${cfg.sanitized.asJson}"))))
 
-    } yield new H2Destination(destinationType, xa, xaPool): Destination[F]
+    } yield new H2Destination(destinationType, xa, blocker): Destination[F]
 
     init.value
   }

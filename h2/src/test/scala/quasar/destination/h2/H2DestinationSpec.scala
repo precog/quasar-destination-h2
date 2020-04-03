@@ -307,6 +307,7 @@ object H2DestinationSpec extends EffectfulQSpec[IO] with CsvSupport {
 
   def config(url: String = TestConnectionUrl): Json =
     ("connectionUri" := url) ->:
+    ("server" := jNull) ->:
     jEmptyObject
 
   def csv[A](cfg: Json)(f: ResultSink.CreateSink[IO, ColumnType.Scalar] => IO[A]): IO[A] =

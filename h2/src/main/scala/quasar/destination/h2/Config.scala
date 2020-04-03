@@ -17,26 +17,27 @@
 package quasar.destination.h2
 
 import slamdata.Predef._
+import quasar.destination.h2.server.ServerConfig
 
 import argonaut._, Argonaut._
 import cats.implicits._
 
-final case class Config(connectionUri: String) {
+final case class Config(connectionUri: String, server: Option[ServerConfig]) {
 
-  def sanitized: Config = {
-    // Just redacting all settings, not really worth figuring out how to parse all this...
-    val sanitizedUri = {
-      val semiColon = connectionUri.indexOf(";")
-      if (semiColon === -1)
-        connectionUri
-      else
-        connectionUri.substring(0, semiColon) + s";$Redacted"
-    }
-    Config(sanitizedUri)
+  private def sanitizeUri(uri: String) = {
+    // Just redacting all uri settings, not really worth figuring out how to parse all this...
+    val semiColon = uri.indexOf(";")
+    if (semiColon === -1)
+      uri
+    else
+      uri.substring(0, semiColon) + s";$Redacted"
   }
+
+  def sanitized: Config =
+    Config(sanitizeUri(connectionUri), server.map(_.sanitized))
 }
 
 object Config {
   implicit val codecJson: CodecJson[Config] =
-    casecodec1(Config.apply, Config.unapply)("connectionUri")
+    casecodec2(Config.apply, Config.unapply)("connectionUri", "server")
 }
