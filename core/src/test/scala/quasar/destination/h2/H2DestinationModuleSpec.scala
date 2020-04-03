@@ -17,7 +17,7 @@
 package quasar.destination.h2
 
 import slamdata.Predef._
-import quasar.api.destination.DestinationType
+import quasar.destination.h2.{H2DestinationModule => H2DM}
 import quasar.destination.h2.server._
 
 import argonaut._, Argonaut._
@@ -25,10 +25,7 @@ import cats.syntax.option._
 import eu.timepit.refined.auto._
 import org.specs2.mutable.Specification
 
-class AbstractDatasourceModuleSpec extends Specification {
-
-  val TestModule = new AbstractDestinationModule(DestinationType("test", 1L))
-
+class H2DestinationModuleSpec extends Specification {
 
   private def initCfgToJson(cfg: InitConfig): Json = {
     ("url" := jString(cfg.url)) ->:
@@ -70,18 +67,18 @@ class AbstractDatasourceModuleSpec extends Specification {
   "sanitize config" >> {
     "does not redact connectionUri if there are no properties" >> {
       val js = cfgToJson(Config("jdbc:h2:file:/data/sample", None), stripNulls = false)
-      TestModule.sanitizeDestinationConfig(js) must_=== js
+      H2DM.sanitizeDestinationConfig(js) must_=== js
     }
 
     "redacts properties in connectionUri (server field is json null)" >> {
       val js = cfgToJson(Config("h2:file:~/sample;USER=sa;PASSWORD=123", None), stripNulls = false)
-      TestModule.sanitizeDestinationConfig(js) must_===
+      H2DM.sanitizeDestinationConfig(js) must_===
         cfgToJson(Config("h2:file:~/sample;<REDACTED>", None), stripNulls = false)
     }
 
     "redacts properties in connectionUri (without server field)" >> {
       val js = cfgToJson(Config("h2:file:~/sample;USER=sa;PASSWORD=123", None), stripNulls = true)
-      TestModule.sanitizeDestinationConfig(js) must_===
+      H2DM.sanitizeDestinationConfig(js) must_===
         cfgToJson(Config("h2:file:~/sample;<REDACTED>", None), stripNulls = false)
     }
 
@@ -93,7 +90,7 @@ class AbstractDatasourceModuleSpec extends Specification {
       )
       val js = cfgToJson(Config("h2:file:~/sample;USER=sa;PASSWORD=123", serverCfg.some), stripNulls = false)
 
-      TestModule.sanitizeDestinationConfig(js) must_===
+      H2DM.sanitizeDestinationConfig(js) must_===
         cfgToJson(
           Config(
             "h2:file:~/sample;<REDACTED>",
@@ -109,7 +106,7 @@ class AbstractDatasourceModuleSpec extends Specification {
       )
       val js = cfgToJson(Config("h2:file:~/sample;USER=sa;PASSWORD=123", serverCfg.some), stripNulls = false)
 
-      TestModule.sanitizeDestinationConfig(js) must_===
+      H2DM.sanitizeDestinationConfig(js) must_===
         cfgToJson(
           Config(
             "h2:file:~/sample;<REDACTED>",
@@ -125,7 +122,7 @@ class AbstractDatasourceModuleSpec extends Specification {
       )
       val js = cfgToJson(Config("h2:file:~/sample;USER=sa;PASSWORD=123", serverCfg.some), stripNulls = true)
 
-      TestModule.sanitizeDestinationConfig(js) must_===
+      H2DM.sanitizeDestinationConfig(js) must_===
         cfgToJson(
           Config(
             "h2:file:~/sample;<REDACTED>",

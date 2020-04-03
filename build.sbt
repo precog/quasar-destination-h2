@@ -24,20 +24,31 @@ lazy val publishTestsSettings = Seq(
 lazy val root = project
   .in(file("."))
   .settings(noPublishSettings)
-  .aggregate(h2, tableau)
+  .aggregate(core)
 
-lazy val h2 = project
-  .in(file("h2"))
-  .settings(publishTestsSettings)
+lazy val core = project
+  .in(file("core"))
   .settings(
     name := "quasar-destination-h2",
-    libraryDependencies ++= Seq(
+
+    quasarPluginName := "h2",
+
+    quasarPluginQuasarVersion := managedVersions.value("precog-quasar"),
+
+    quasarPluginDestinationFqcn := Some("quasar.destination.h2.H2DestinationModule$"),
+
+    /** Specify managed dependencies here instead of with `libraryDependencies`.
+      * Do not include quasar libs, they will be included based on the value of
+      * `quasarPluginQuasarVersion`.
+      */
+    quasarPluginDependencies ++= Seq(
       "org.slf4s"    %% "slf4s-api" % "1.7.25",
       "org.tpolecat" %% "doobie-core" % DoobieVersion,
       "org.tpolecat" %% "doobie-hikari" % DoobieVersion,
       "org.tpolecat" %% "doobie-h2" % DoobieVersion,
-      "com.h2database" % "h2" % "1.4.200",
-      "com.precog" %% "quasar-connector" % managedVersions.value("precog-quasar"),
+      "com.h2database" % "h2" % "1.4.200"),
+    
+    libraryDependencies ++= Seq(
       "com.precog" %% "quasar-connector" % managedVersions.value("precog-quasar") % Test classifier "tests",
       "com.precog" %% "quasar-foundation" % managedVersions.value("precog-quasar") % Test classifier "tests",
       "com.github.tototoshi" %% "scala-csv" % "1.3.6" % Test,
@@ -45,23 +56,5 @@ lazy val h2 = project
       "org.specs2" %% "specs2-core" % SpecsVersion % Test,
       "org.specs2" %% "specs2-scalacheck" % SpecsVersion % Test,
       "org.specs2" %% "specs2-scalaz" % SpecsVersion % Test))
-
-lazy val tableau = project
-  .in(file("tableau"))
-  .dependsOn(h2 % "compile->compile;test->test")
-  .settings(
-    name := "quasar-destination-tableau",
-
-    quasarPluginName := "tableau",
-
-    quasarPluginQuasarVersion := managedVersions.value("precog-quasar"),
-
-    quasarPluginDestinationFqcn := Some("quasar.destination.tableau.TableauDestinationModule$"),
-
-    /** Specify managed dependencies here instead of with `libraryDependencies`.
-      * Do not include quasar libs, they will be included based on the value of
-      * `quasarPluginQuasarVersion`.
-      */
-    quasarPluginDependencies ++= Seq())
 
   .enablePlugins(QuasarPlugin)

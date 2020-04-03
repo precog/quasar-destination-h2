@@ -25,6 +25,7 @@ import quasar.contrib.scalaz.MonadError_
 import quasar.connector._
 import quasar.connector.destination._
 import quasar.connector.render.RenderConfig
+import quasar.destination.h2.H2DestinationModule._
 
 import java.time._
 import scala.Float
@@ -51,8 +52,6 @@ import shapeless.syntax.singleton._
 import shims.applicativeToScalaz
 
 object H2DestinationSpec extends EffectfulQSpec[IO] with CsvSupport {
-
-  import AbstractDestinationModule._
 
   sequential
 
@@ -286,8 +285,6 @@ object H2DestinationSpec extends EffectfulQSpec[IO] with CsvSupport {
         HNil)
   }
 
-  val DM = new AbstractDestinationModule(DestinationType("h2-test", 1L))
-
   val TestConnectionUrl: String = "h2:~/testing"
 
   implicit val CS: ContextShift[IO] = IO.contextShift(global)
@@ -323,7 +320,7 @@ object H2DestinationSpec extends EffectfulQSpec[IO] with CsvSupport {
     }
 
   def dest[A](cfg: Json)(f: Either[InitErr, Destination[IO]] => IO[A]): IO[A] =
-    DM.destination[IO](cfg).use(f)
+    H2DestinationModule.destination[IO](cfg).use(f)
 
   def drainAndSelect[F[_]: Async: ContextShift, R <: HList, K <: HList, V <: HList, T <: HList, S <: HList](
       connectionUri: String,

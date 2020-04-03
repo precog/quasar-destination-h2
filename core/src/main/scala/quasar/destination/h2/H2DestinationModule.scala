@@ -38,11 +38,11 @@ import doobie.implicits._
 import eu.timepit.refined.auto._
 import org.slf4s.Logging
 
-class AbstractDestinationModule(
-    val destinationType: DestinationType)
-    extends DestinationModule with Logging {
+object H2DestinationModule extends DestinationModule with Logging {
 
-  import AbstractDestinationModule._
+  type InitErr = DE.InitializationError[Json]
+
+  val destinationType = DestinationType("h2", 1L)
 
   val name = destinationType.name
 
@@ -150,8 +150,4 @@ class AbstractDestinationModule(
     Resource.make(alloc)(es => F.delay(es.shutdown()))
       .map(es => qc.Blocker(ExecutionContext.fromExecutor(es)))
   }
-}
-
-object AbstractDestinationModule {
-  type InitErr = DE.InitializationError[Json]
 }
