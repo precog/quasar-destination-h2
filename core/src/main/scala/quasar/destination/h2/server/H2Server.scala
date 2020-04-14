@@ -56,6 +56,10 @@ object H2Server extends Logging {
         Sync[F].delay {
           h2.RunScript.execute(cfg.url, cfg.user, cfg.password, tmpFile.toString, UTF_8, false)
           log.info("Initialized H2")
+        } handleErrorWith { _ =>
+          Sync[F].delay {
+            log.info("Assuming that H2 is already initialized")
+          }
         }
     } yield ()
 
