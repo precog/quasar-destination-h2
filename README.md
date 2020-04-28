@@ -29,3 +29,4 @@ Configuration for the H2 destination has the following JSON format
   args. Please refer to [H2 Server docs](http://www.h2database.com/javadoc/org/h2/tools/Server.html) for the supported args.
   * `pg`: (optional) if included a postgres server will be started with the specified
   args. Please refer to [H2 Server docs](http://www.h2database.com/javadoc/org/h2/tools/Server.html) for the supported args.
+
