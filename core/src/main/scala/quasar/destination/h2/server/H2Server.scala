@@ -30,19 +30,13 @@ import org.slf4s.Logging
 
 object H2Server extends Logging {
 
-  def apply[F[_]: ContextShift: Sync](config: Option[ServerConfig], blocker: Blocker)
+  def apply[F[_]: ContextShift: Sync](config: ServerConfig, blocker: Blocker)
       : Resource[F, Unit] =
-    config.map(c => mk(c, blocker)).getOrElse(Resource.pure[F, Unit](()))
-
-  def mk[F[_]: ContextShift: Sync](config: ServerConfig, blocker: Blocker)
-      : Resource[F, Unit] = {
-    val rUnit = Resource.pure[F, Unit](())
     for {
-      ini <- config.init.map(i => Resource.liftF(init[F](i, blocker))).getOrElse(rUnit)
-      tcp <- config.tcp.map(tcpServer[F](_).void).getOrElse(rUnit)
-      pg <- config.pg.map(pgServer[F](_).void).getOrElse(rUnit)
+      ini <- config.init.traverse_(i => Resource.liftF(init[F](i, blocker)))
+      tcp <- config.tcp.traverse_(tcpServer[F](_).void)
+      pg <- config.pg.traverse_(pgServer[F](_).void)
     } yield pg
-  }
 
   private def init[F[_]: ContextShift](
       cfg: InitConfig, blocker: Blocker)(
