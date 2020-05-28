@@ -53,8 +53,11 @@ object H2CsvCreateSink extends Logging {
 
         _ <- save(csvTmpFile, bytes, blocker)
 
-        _ <- (dropTableIfExistsQuery(tableName).updateWithLogHandler(logHandler).run.transact(xa)
-              >> createTableQuery(tableName, cols, csvTmpFile.toString).updateWithLogHandler(logHandler).run.transact(xa))
+        _ <-
+          (for {
+            _ <- dropTableIfExistsQuery(tableName).updateWithLogHandler(logHandler).run
+            _ <- createTableQuery(tableName, cols, csvTmpFile.toString).updateWithLogHandler(logHandler).run
+          } yield ()).transact(xa)
 
         _ <- deleteIfExists[F](csvTmpFile)
       } yield ()
