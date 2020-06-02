@@ -88,7 +88,7 @@ object H2DestinationModule extends DestinationModule with Logging {
 
       blocker <- EitherT.right(unboundedPool[F](s"$name-transact-$freshTag"))
 
-      _ <- EitherT.right(H2Server[F](cfg.server, blocker))
+      _ <- EitherT.right(cfg.server.traverse_(H2Server[F](_, blocker)))
 
       xa <- EitherT.right(hikariTransactor[F](cfg, connPool, blocker))
 
