@@ -19,7 +19,6 @@ package quasar.destination.h2
 import slamdata.Predef._
 import quasar.api.{Column, ColumnType}
 import quasar.api.resource._
-import quasar.api.table.TableName
 import quasar.connector._
 
 import java.nio.{file => jfile}
@@ -65,9 +64,9 @@ object H2CsvCreateSink extends Logging {
     Stream.eval(res)
   }
 
-  private def ensureValidTableName[F[_]: Effect: MonadResourceErr](p: ResourcePath): F[TableName] =
+  private def ensureValidTableName[F[_]: Effect: MonadResourceErr](p: ResourcePath): F[String] =
     p match {
-      case t /: ResourcePath.Root => TableName(t).pure[F]
+      case t /: ResourcePath.Root => t.pure[F]
       case _ => MonadResourceErr[F].raiseError(ResourceError.notAResource(p))
     }
 
@@ -106,12 +105,12 @@ object H2CsvCreateSink extends Logging {
   }
 
   private def createTableQuery[F[_]: Effect: MonadResourceErr](
-      tableName: TableName,
+      tableName: String,
       cols: NonEmptyList[(Fragment, Fragment)],
       fileName: String)
       : Fragment = {
 
-    val tableFragment = Fragment.const(hygienicIdent(tableName.name))
+    val tableFragment = Fragment.const(hygienicIdent(tableName))
     val colsFragment = Fragments.parentheses(cols.map(p => p._1 ++ p._2).intercalate(fr","))
     val csvReadArgsFragment =
       List(
@@ -123,8 +122,8 @@ object H2CsvCreateSink extends Logging {
       fr"AS SELECT * FROM CSVREAD" ++ Fragments.parentheses(csvReadArgsFragment)
   }
 
-  private def dropTableIfExistsQuery(table: TableName): Fragment =
-    fr"DROP TABLE IF EXISTS" ++ Fragment.const(hygienicIdent(table.name))
+  private def dropTableIfExistsQuery(table: String): Fragment =
+    fr"DROP TABLE IF EXISTS" ++ Fragment.const(hygienicIdent(table))
 
   private val logHandler: LogHandler =
     LogHandler {
