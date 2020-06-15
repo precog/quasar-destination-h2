@@ -27,6 +27,7 @@ import quasar.connector.destination._
 import quasar.connector.render.RenderConfig
 import quasar.destination.h2.H2DestinationModule._
 
+import java.nio.file.Files
 import java.time._
 import scala.Float
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -285,7 +286,7 @@ object H2DestinationSpec extends EffectfulQSpec[IO] with CsvSupport {
         HNil)
   }
 
-  val TestConnectionUrl: String = "h2:~/testing"
+  val TestConnectionUrl: String = s"h2:${Files.createTempDirectory("h2-testing")}"
 
   implicit val CS: ContextShift[IO] = IO.contextShift(global)
 

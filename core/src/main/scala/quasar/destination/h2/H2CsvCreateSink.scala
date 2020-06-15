@@ -115,7 +115,8 @@ object H2CsvCreateSink extends Logging {
     val csvReadArgsFragment =
       List(
         Fragment.const(singleQuote(fileName)),
-        singleQuoteFragment(cols.map(_._1).intercalate(fr","))
+        singleQuoteFragment(cols.map(_._1).intercalate(fr",")),
+        Fragment.const(singleQuote("charset=UTF-8"))
       ).intercalate(fr",")
 
     fr"CREATE TABLE" ++ tableFragment ++ colsFragment ++
