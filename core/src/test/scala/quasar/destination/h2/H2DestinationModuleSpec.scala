@@ -22,7 +22,6 @@ import quasar.destination.h2.server._
 
 import argonaut._, Argonaut._
 import cats.syntax.option._
-import eu.timepit.refined.auto._
 import org.specs2.mutable.Specification
 
 class H2DestinationModuleSpec extends Specification {
