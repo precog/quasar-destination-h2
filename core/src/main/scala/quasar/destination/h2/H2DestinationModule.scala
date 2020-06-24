@@ -35,7 +35,6 @@ import cats.implicits._
 import doobie._
 import doobie.hikari.HikariTransactor
 import doobie.implicits._
-import eu.timepit.refined.auto._
 import org.slf4s.Logging
 
 object H2DestinationModule extends DestinationModule with Logging {

@@ -40,7 +40,6 @@ import doobie._
 import doobie.implicits._
 import doobie.implicits.javatime._
 import doobie.util.Read
-import eu.timepit.refined.auto._
 import fs2.{Pull, Stream}
 import org.specs2.matcher.MatchResult
 import scalaz.-\/
