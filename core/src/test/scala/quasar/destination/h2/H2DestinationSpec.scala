@@ -320,7 +320,7 @@ object H2DestinationSpec extends EffectfulQSpec[IO] with CsvSupport {
     }
 
   def dest[A](cfg: Json)(f: Either[InitErr, Destination[IO]] => IO[A]): IO[A] =
-    H2DestinationModule.destination[IO](cfg).use(f)
+    H2DestinationModule.destination[IO](cfg, _ => _ => Stream.empty).use(f)
 
   def drainAndSelect[F[_]: Async: ContextShift, R <: HList, K <: HList, V <: HList, T <: HList, S <: HList](
       connectionUri: String,
