@@ -20,7 +20,7 @@ import slamdata.Predef._
 import quasar.api.destination.{DestinationError => DE, _}
 import quasar.{concurrent => qc}
 import quasar.connector.MonadResourceErr
-import quasar.connector.destination.{Destination, DestinationModule}
+import quasar.connector.destination.{Destination, DestinationModule, PushmiPullyu}
 import quasar.destination.h2.server.H2Server
 
 import java.util.concurrent.Executors
@@ -57,7 +57,8 @@ object H2DestinationModule extends DestinationModule with Logging {
       .getOr(jEmptyObject)
 
   def destination[F[_]: ConcurrentEffect: ContextShift: MonadResourceErr: Timer](
-      config: Json)
+      config: Json,
+      pushPull: PushmiPullyu[F])
       : Resource[F, Either[InitErr, Destination[F]]] = {
 
     val cfg0: Either[InitErr, Config] =
