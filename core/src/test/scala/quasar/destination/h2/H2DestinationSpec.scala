@@ -24,7 +24,6 @@ import quasar.api.resource._
 import quasar.contrib.scalaz.MonadError_
 import quasar.connector._
 import quasar.connector.destination._
-import quasar.connector.render.RenderConfig
 import quasar.destination.h2.H2DestinationModule._
 
 import java.nio.file.Files
@@ -85,7 +84,9 @@ object H2DestinationSpec extends EffectfulQSpec[IO] with CsvSupport {
     "reject empty paths with NotAResource" >>* {
       csv(config()) { sink =>
         val p = ResourcePath.root()
-        val r = sink.consume(p, NonEmptyList.one(Column("a", ColumnType.Boolean)), Stream.empty).compile.drain
+        val r = sink.consume(p, NonEmptyList.one(Column("a", ColumnType.Boolean)))
+          ._2.apply(Stream.empty)
+          .compile.drain
 
         MRE.attempt(r).map(_ must beLike {
           case -\/(ResourceError.NotAResource(p2)) => p2 must_=== p
@@ -96,7 +97,9 @@ object H2DestinationSpec extends EffectfulQSpec[IO] with CsvSupport {
     "reject paths with > 1 segments with NotAResource" >>* {
       csv(config()) { sink =>
         val p = ResourcePath.root() / ResourceName("foo") / ResourceName("bar")
-        val r = sink.consume(p, NonEmptyList.one(Column("a", ColumnType.Boolean)), Stream.empty).compile.drain
+        val r = sink.consume(p, NonEmptyList.one(Column("a", ColumnType.Boolean)))
+          ._2.apply(Stream.empty)
+          .compile.drain
 
         MRE.attempt(r).map(_ must beLike {
           case -\/(ResourceError.NotAResource(p2)) => p2 must_=== p
@@ -307,15 +310,15 @@ object H2DestinationSpec extends EffectfulQSpec[IO] with CsvSupport {
     ("server" := jNull) ->:
     jEmptyObject
 
-  def csv[A](cfg: Json)(f: ResultSink.CreateSink[IO, ColumnType.Scalar] => IO[A]): IO[A] =
+  def csv[A](cfg: Json)(f: ResultSink.CreateSink[IO, ColumnType.Scalar, Byte] => IO[A]): IO[A] =
     dest(cfg) {
       case Left(err) =>
         IO.raiseError(new RuntimeException(err.shows))
 
       case Right(dst) =>
         dst.sinks.toList
-          .collectFirst { case c @ ResultSink.CreateSink(_: RenderConfig.Csv, _) => c }
-          .map(s => f(s.asInstanceOf[ResultSink.CreateSink[IO, ColumnType.Scalar]]))
+          .collectFirst { case c @ ResultSink.CreateSink(_) => c }
+          .map(s => f(s.asInstanceOf[ResultSink.CreateSink[IO, ColumnType.Scalar, Byte]]))
           .getOrElse(IO.raiseError(new RuntimeException("No CSV sink found")))
     }
 
@@ -325,7 +328,7 @@ object H2DestinationSpec extends EffectfulQSpec[IO] with CsvSupport {
   def drainAndSelect[F[_]: Async: ContextShift, R <: HList, K <: HList, V <: HList, T <: HList, S <: HList](
       connectionUri: String,
       table: Ident,
-      sink: ResultSink.CreateSink[F, ColumnType.Scalar],
+      sink: ResultSink.CreateSink[F, ColumnType.Scalar, Byte],
       records: Stream[F, R])(
       implicit
       keys: Keys.Aux[R, K],
@@ -347,7 +350,7 @@ object H2DestinationSpec extends EffectfulQSpec[IO] with CsvSupport {
       def apply[R <: HList, K <: HList, V <: HList, T <: HList, S <: HList](
           connectionUri: String,
           table: Ident,
-          sink: ResultSink.CreateSink[F, ColumnType.Scalar],
+          sink: ResultSink.CreateSink[F, ColumnType.Scalar, Byte],
           records: Stream[F, R])(
           implicit
           async: Async[F],
