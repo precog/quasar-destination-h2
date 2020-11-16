@@ -38,105 +38,27 @@ jobs:
         shell: bash
         run: git config --global core.autocrlf false
 
-      - name: Checkout current branch (fast)
+      - name: Checkout current branch (full)
         uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
 
       - name: Setup Java and Scala
-        uses: olafurpg/setup-scala@v5
+        uses: olafurpg/setup-scala@v10
         with:
           java-version: ${{ matrix.java }}
 
-      - name: Setup rm-symlink alias
-        if: contains(runner.os, 'windows')
-        shell: bash
-        run: |
-          git config --global alias.rm-symlinks '!'"$(cat <<'ETX'
-          __git_rm_symlinks() {
-            case "$1" in (-h)
-              printf 'usage: git rm-symlinks [symlink] [symlink] [...]\n'
-              return 0
-            esac
-            ppid=$$
-            case $# in
-              (0) git ls-files -s | grep -E '^120000' | cut -f2 ;;
-              (*) printf '%s\n' "$@" ;;
-            esac | while IFS= read -r symlink; do
-              case "$symlink" in
-                (*/*) symdir=${symlink%/*} ;;
-                (*) symdir=. ;;
-              esac
-              git checkout -- "$symlink"
-              src="${symdir}/$(cat "$symlink")"
-              posix_to_dos_sed='s_^/\([A-Za-z]\)_\1:_;s_/_\\\\_g'
-              doslnk=$(printf '%s\n' "$symlink" | sed "$posix_to_dos_sed")
-              dossrc=$(printf '%s\n' "$src" | sed "$posix_to_dos_sed")
-              if [ -f "$src" ]; then
-                rm -f "$symlink"
-                cmd //C mklink //H "$doslnk" "$dossrc"
-              elif [ -d "$src" ]; then
-                rm -f "$symlink"
-                cmd //C mklink //J "$doslnk" "$dossrc"
-              else
-                printf 'error: git-rm-symlink: Not a valid source\n' >&2
-                printf '%s =/=> %s  (%s =/=> %s)...\n' \
-                    "$symlink" "$src" "$doslnk" "$dossrc" >&2
-                false
-              fi || printf 'ESC[%d]: %d\n' "$ppid" "$?"
-              git update-index --assume-unchanged "$symlink"
-            done | awk '
-              BEGIN { status_code = 0 }
-              /^ESC\['"$ppid"'\]: / { status_code = $2 ; next }
-              { print }
-              END { exit status_code }
-            '
-          }
-          __git_rm_symlinks
-          ETX
-          )"
-          git config --global alias.rm-symlink '!git rm-symlinks'  # for back-compat.
-
-      - if: contains(runner.os, 'windows')
-        shell: bash
-        run: git rm-symlink
-
-      - name: Cache ivy2
-        uses: actions/cache@v1
-        with:
-          path: ~/.ivy2/cache
-          key: ${{ runner.os }}-sbt-ivy-cache-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}-${{ hashFiles('.versions.json') }}
-
-      - name: Cache coursier (generic)
-        uses: actions/cache@v1
-        with:
-          path: ~/.coursier/cache/v1
-          key: ${{ runner.os }}-generic-sbt-coursier-cache-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}-${{ hashFiles('.versions.json') }}
-
-      - name: Cache coursier (linux)
-        if: contains(runner.os, 'linux')
-        uses: actions/cache@v1
-        with:
-          path: ~/.cache/coursier/v1
-          key: ${{ runner.os }}-sbt-coursier-cache-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}-${{ hashFiles('.versions.json') }}
-
-      - name: Cache coursier (macOS)
-        if: contains(runner.os, 'macos')
-        uses: actions/cache@v1
-        with:
-          path: ~/Library/Caches/Coursier/v1
-          key: ${{ runner.os }}-sbt-coursier-cache-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}-${{ hashFiles('.versions.json') }}
-
-      - name: Cache coursier (windows)
-        if: contains(runner.os, 'windows')
-        uses: actions/cache@v1
-        with:
-          path: ~/AppData/Local/Coursier/Cache/v1
-          key: ${{ runner.os }}-sbt-coursier-cache-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}-${{ hashFiles('.versions.json') }}
-
       - name: Cache sbt
-        uses: actions/cache@v1
+        uses: actions/cache@v2
         with:
-          path: ~/.sbt
-          key: ${{ runner.os }}-sbt-cache-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}-${{ hashFiles('.versions.json') }}
+          path: |
+            ~/.sbt
+            ~/.ivy2/cache
+            ~/.coursier/cache/v1
+            ~/.cache/coursier/v1
+            ~/AppData/Local/Coursier/Cache/v1
+            ~/Library/Caches/Coursier/v1
+          key: ${{ runner.os }}-sbt-cache-v2-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}-${{ hashFiles('.versions.json') }}
 
       - name: Common sbt setup
         if: env.ENCRYPTION_PASSWORD != null
@@ -150,23 +72,15 @@ jobs:
       - shell: bash
         run: $SBT ++${{ matrix.scala }} ci
 
-      - name: Upload target directory 'target' (${{ matrix.scala }})
-        uses: actions/upload-artifact@v1
-        with:
-          name: target-${{ matrix.os }}-${{ matrix.scala }}-${{ matrix.java }}-target
-          path: target
+      - name: Compress target directories
+        shell: bash
+        run: tar cf targets.tar target core/target project/target
 
-      - name: Upload target directory 'core/target' (${{ matrix.scala }})
-        uses: actions/upload-artifact@v1
+      - name: Upload target directories
+        uses: actions/upload-artifact@v2
         with:
-          name: target-${{ matrix.os }}-${{ matrix.scala }}-${{ matrix.java }}-core_target
-          path: core/target
-
-      - name: Upload target directory 'project/target'
-        uses: actions/upload-artifact@v1
-        with:
-          name: target-${{ matrix.os }}-${{ matrix.java }}-project_target
-          path: project/target
+          name: target-${{ matrix.os }}-${{ matrix.scala }}-${{ matrix.java }}
+          path: targets.tar
 
   publish:
     name: Publish Artifacts
@@ -183,121 +97,37 @@ jobs:
         if: contains(runner.os, 'windows')
         run: git config --global core.autocrlf false
 
-      - name: Checkout current branch (fast)
+      - name: Checkout current branch (full)
         uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
 
       - name: Setup Java and Scala
-        uses: olafurpg/setup-scala@v5
+        uses: olafurpg/setup-scala@v10
         with:
           java-version: ${{ matrix.java }}
 
-      - name: Setup rm-symlink alias
-        if: contains(runner.os, 'windows')
-        run: |
-          git config --global alias.rm-symlinks '!'"$(cat <<'ETX'
-          __git_rm_symlinks() {
-            case "$1" in (-h)
-              printf 'usage: git rm-symlinks [symlink] [symlink] [...]\n'
-              return 0
-            esac
-            ppid=$$
-            case $# in
-              (0) git ls-files -s | grep -E '^120000' | cut -f2 ;;
-              (*) printf '%s\n' "$@" ;;
-            esac | while IFS= read -r symlink; do
-              case "$symlink" in
-                (*/*) symdir=${symlink%/*} ;;
-                (*) symdir=. ;;
-              esac
-              git checkout -- "$symlink"
-              src="${symdir}/$(cat "$symlink")"
-              posix_to_dos_sed='s_^/\([A-Za-z]\)_\1:_;s_/_\\\\_g'
-              doslnk=$(printf '%s\n' "$symlink" | sed "$posix_to_dos_sed")
-              dossrc=$(printf '%s\n' "$src" | sed "$posix_to_dos_sed")
-              if [ -f "$src" ]; then
-                rm -f "$symlink"
-                cmd //C mklink //H "$doslnk" "$dossrc"
-              elif [ -d "$src" ]; then
-                rm -f "$symlink"
-                cmd //C mklink //J "$doslnk" "$dossrc"
-              else
-                printf 'error: git-rm-symlink: Not a valid source\n' >&2
-                printf '%s =/=> %s  (%s =/=> %s)...\n' \
-                    "$symlink" "$src" "$doslnk" "$dossrc" >&2
-                false
-              fi || printf 'ESC[%d]: %d\n' "$ppid" "$?"
-              git update-index --assume-unchanged "$symlink"
-            done | awk '
-              BEGIN { status_code = 0 }
-              /^ESC\['"$ppid"'\]: / { status_code = $2 ; next }
-              { print }
-              END { exit status_code }
-            '
-          }
-          __git_rm_symlinks
-          ETX
-          )"
-          git config --global alias.rm-symlink '!git rm-symlinks'  # for back-compat.
-
-      - if: contains(runner.os, 'windows')
-        run: git rm-symlink
-
-      - name: Cache ivy2
-        uses: actions/cache@v1
-        with:
-          path: ~/.ivy2/cache
-          key: ${{ runner.os }}-sbt-ivy-cache-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}-${{ hashFiles('.versions.json') }}
-
-      - name: Cache coursier (generic)
-        uses: actions/cache@v1
-        with:
-          path: ~/.coursier/cache/v1
-          key: ${{ runner.os }}-generic-sbt-coursier-cache-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}-${{ hashFiles('.versions.json') }}
-
-      - name: Cache coursier (linux)
-        if: contains(runner.os, 'linux')
-        uses: actions/cache@v1
-        with:
-          path: ~/.cache/coursier/v1
-          key: ${{ runner.os }}-sbt-coursier-cache-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}-${{ hashFiles('.versions.json') }}
-
-      - name: Cache coursier (macOS)
-        if: contains(runner.os, 'macos')
-        uses: actions/cache@v1
-        with:
-          path: ~/Library/Caches/Coursier/v1
-          key: ${{ runner.os }}-sbt-coursier-cache-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}-${{ hashFiles('.versions.json') }}
-
-      - name: Cache coursier (windows)
-        if: contains(runner.os, 'windows')
-        uses: actions/cache@v1
-        with:
-          path: ~/AppData/Local/Coursier/Cache/v1
-          key: ${{ runner.os }}-sbt-coursier-cache-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}-${{ hashFiles('.versions.json') }}
-
       - name: Cache sbt
-        uses: actions/cache@v1
+        uses: actions/cache@v2
         with:
-          path: ~/.sbt
-          key: ${{ runner.os }}-sbt-cache-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}-${{ hashFiles('.versions.json') }}
+          path: |
+            ~/.sbt
+            ~/.ivy2/cache
+            ~/.coursier/cache/v1
+            ~/.cache/coursier/v1
+            ~/AppData/Local/Coursier/Cache/v1
+            ~/Library/Caches/Coursier/v1
+          key: ${{ runner.os }}-sbt-cache-v2-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}-${{ hashFiles('.versions.json') }}
 
-      - name: Download target directory 'target' (2.12.11)
-        uses: actions/download-artifact@v1
+      - name: Download target directories (2.12.11)
+        uses: actions/download-artifact@v2
         with:
-          name: target-${{ matrix.os }}-2.12.11-${{ matrix.java }}-target
-          path: target
+          name: target-${{ matrix.os }}-2.12.11-${{ matrix.java }}
 
-      - name: Download target directory 'core/target' (2.12.11)
-        uses: actions/download-artifact@v1
-        with:
-          name: target-${{ matrix.os }}-2.12.11-${{ matrix.java }}-core_target
-          path: core/target
-
-      - name: Download target directory 'project/target'
-        uses: actions/download-artifact@v1
-        with:
-          name: target-${{ matrix.os }}-${{ matrix.java }}-project_target
-          path: project/target
+      - name: Inflate target directories (2.12.11)
+        run: |
+          tar xf targets.tar
+          rm targets.tar
 
       - name: Common sbt setup
         run: $SBT ++${{ matrix.scala }} transferCommonResources transferPublishAndTagResources exportSecretsForActions
@@ -322,7 +152,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Setup Java and Scala
-        uses: olafurpg/setup-scala@v5
+        uses: olafurpg/setup-scala@v10
         with:
           java-version: ${{ matrix.java }}
 
