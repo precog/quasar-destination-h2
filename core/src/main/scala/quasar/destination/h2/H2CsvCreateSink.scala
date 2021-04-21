@@ -29,7 +29,7 @@ import cats.implicits._
 import doobie._
 import doobie.implicits._
 import doobie.util.log.{ExecFailure, ProcessingFailure, Success}
-import fs2.{io, Stream}
+import fs2.{io, Pipe, Stream}
 import org.slf4s.Logging
 
 object H2CsvCreateSink extends Logging {
@@ -38,9 +38,8 @@ object H2CsvCreateSink extends Logging {
       xa: Transactor[F],
       blocker: Blocker)(
       path: ResourcePath,
-      columns: NonEmptyList[Column[ColumnType.Scalar]],
-      bytes: Stream[F, Byte])
-      : Stream[F, Unit] = {
+      columns: NonEmptyList[Column[ColumnType.Scalar]])
+      : Pipe[F, Byte, Unit] = { bytes =>
 
     val res =
       for {
@@ -115,7 +114,8 @@ object H2CsvCreateSink extends Logging {
     val csvReadArgsFragment =
       List(
         Fragment.const(singleQuote(fileName)),
-        singleQuoteFragment(cols.map(_._1).intercalate(fr","))
+        singleQuoteFragment(cols.map(_._1).intercalate(fr",")),
+        Fragment.const(singleQuote("charset=UTF-8"))
       ).intercalate(fr",")
 
     fr"CREATE TABLE" ++ tableFragment ++ colsFragment ++

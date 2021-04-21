@@ -18,9 +18,9 @@ package quasar.destination.h2
 
 import slamdata.Predef._
 import quasar.api.destination.{DestinationError => DE, _}
-import quasar.{concurrent => qc}
+import quasar.concurrent._
 import quasar.connector.MonadResourceErr
-import quasar.connector.destination.{Destination, DestinationModule}
+import quasar.connector.destination.{Destination, DestinationModule, PushmiPullyu}
 import quasar.destination.h2.server.H2Server
 
 import java.util.concurrent.Executors
@@ -35,7 +35,6 @@ import cats.implicits._
 import doobie._
 import doobie.hikari.HikariTransactor
 import doobie.implicits._
-import eu.timepit.refined.auto._
 import org.slf4s.Logging
 
 object H2DestinationModule extends DestinationModule with Logging {
@@ -58,7 +57,8 @@ object H2DestinationModule extends DestinationModule with Logging {
       .getOr(jEmptyObject)
 
   def destination[F[_]: ConcurrentEffect: ContextShift: MonadResourceErr: Timer](
-      config: Json)
+      config: Json,
+      pushPull: PushmiPullyu[F])
       : Resource[F, Either[InitErr, Destination[F]]] = {
 
     val cfg0: Either[InitErr, Config] =
@@ -86,7 +86,7 @@ object H2DestinationModule extends DestinationModule with Logging {
 
       connPool <- EitherT.right(boundedPool[F](s"$name-connection-$freshTag", ConnectionPoolSize))
 
-      blocker <- EitherT.right(unboundedPool[F](s"$name-transact-$freshTag"))
+      blocker <- EitherT.right(Blocker.cached[F](s"$name-transact-$freshTag"))
 
       _ <- EitherT.right(cfg.server.traverse_(H2Server[F](_, blocker)))
 
@@ -113,7 +113,7 @@ object H2DestinationModule extends DestinationModule with Logging {
       : Resource[F, ExecutionContext] = {
 
     val alloc =
-      F.delay(Executors.newFixedThreadPool(size, qc.NamedDaemonThreadFactory(name)))
+      F.delay(Executors.newFixedThreadPool(size, NamedDaemonThreadFactory(name)))
 
     Resource.make(alloc)(es => F.delay(es.shutdown()))
       .map(ExecutionContext.fromExecutor)
@@ -139,15 +139,5 @@ object H2DestinationModule extends DestinationModule with Logging {
         }
       }
     }
-  }
-
-  private def unboundedPool[F[_]](name: String)(implicit F: Sync[F])
-      : Resource[F, Blocker] = {
-
-    val alloc =
-      F.delay(Executors.newCachedThreadPool(qc.NamedDaemonThreadFactory(name)))
-
-    Resource.make(alloc)(es => F.delay(es.shutdown()))
-      .map(es => qc.Blocker(ExecutionContext.fromExecutor(es)))
   }
 }

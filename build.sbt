@@ -4,6 +4,8 @@ ThisBuild / scalaVersion := "2.12.11"
 
 ThisBuild / githubRepository := "quasar-destination-h2"
 
+ThisBuild / githubWorkflowOSes += "windows-latest"
+
 performMavenCentralSync in ThisBuild := false   // basically just ignores all the sonatype sync parts of things
 
 publishAsOSSProject in ThisBuild := true
@@ -47,7 +49,7 @@ lazy val core = project
       "org.tpolecat" %% "doobie-hikari" % DoobieVersion,
       "org.tpolecat" %% "doobie-h2" % DoobieVersion,
       "com.h2database" % "h2" % "1.4.200"),
-    
+
     libraryDependencies ++= Seq(
       "com.precog" %% "quasar-connector" % managedVersions.value("precog-quasar") % Test classifier "tests",
       "com.precog" %% "quasar-foundation" % managedVersions.value("precog-quasar") % Test classifier "tests",

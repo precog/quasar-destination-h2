@@ -21,6 +21,8 @@ import quasar.api.destination.DestinationType
 import quasar.connector.MonadResourceErr
 import quasar.connector.destination.{LegacyDestination, ResultSink}
 
+import scala.Byte
+
 import cats.data.NonEmptyList
 import cats.effect.{Blocker, ContextShift, Effect, Timer}
 import doobie.Transactor
@@ -32,10 +34,14 @@ final class H2Destination[F[_]: Effect: MonadResourceErr: ContextShift: Timer](
     blocker: Blocker)
     extends LegacyDestination[F] with Logging {
 
-  private val csvSink: ResultSink[F, ColumnType.Scalar] =
-    ResultSink.create[F, ColumnType.Scalar](RenderConfigCsv)(H2CsvCreateSink(xa, blocker))
+  private val csvSink: ResultSink[F, ColumnType.Scalar] = {
+    val h2Sink = H2CsvCreateSink(xa, blocker) _
+
+    ResultSink.create[F, ColumnType.Scalar, Byte] { (path, cols) =>
+      (RenderConfigCsv, h2Sink(path, cols))
+    }
+  }
 
   val sinks: NonEmptyList[ResultSink[F, ColumnType.Scalar]] =
     NonEmptyList.one(csvSink)
-
 }
