@@ -97,7 +97,7 @@ object H2DestinationModule extends DestinationModule with Logging {
           Left(DE.connectionFailed[Json, InitErr](destinationType, sanitizeDestinationConfig(config), ex))
       }))
 
-      _ <- EitherT.right[InitErr](Resource.eval(Sync[F].defer(
+      _ <- EitherT.right[InitErr](Resource.eval(Sync[F].delay(
         log.info(s"Initialized $name destination: tag = $freshTag, config = ${cfg.sanitized.asJson}"))))
 
     } yield new H2Destination(destinationType, xa, blocker): Destination[F]
