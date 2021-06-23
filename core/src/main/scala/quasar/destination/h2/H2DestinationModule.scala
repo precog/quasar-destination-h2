@@ -82,7 +82,7 @@ object H2DestinationModule extends DestinationModule with Logging {
     val init = for {
       cfg <- EitherT(cfg0.pure[Resource[F, ?]])
 
-      freshTag <- EitherT.right(Resource.liftF(randomAlphaNum[F](6)))
+      freshTag <- EitherT.right(Resource.eval(randomAlphaNum[F](6)))
 
       connPool <- EitherT.right(boundedPool[F](s"$name-connection-$freshTag", ConnectionPoolSize))
 
@@ -92,12 +92,12 @@ object H2DestinationModule extends DestinationModule with Logging {
 
       xa <- EitherT.right(hikariTransactor[F](cfg, connPool, blocker))
 
-      _ <- EitherT(Resource.liftF(validateConnection.transact(xa) recover {
+      _ <- EitherT(Resource.eval(validateConnection.transact(xa) recover {
         case NonFatal(ex: Exception) =>
           Left(DE.connectionFailed[Json, InitErr](destinationType, sanitizeDestinationConfig(config), ex))
       }))
 
-      _ <- EitherT.right[InitErr](Resource.liftF(Sync[F].delay(
+      _ <- EitherT.right[InitErr](Resource.eval(Sync[F].defer(
         log.info(s"Initialized $name destination: tag = $freshTag, config = ${cfg.sanitized.asJson}"))))
 
     } yield new H2Destination(destinationType, xa, blocker): Destination[F]
