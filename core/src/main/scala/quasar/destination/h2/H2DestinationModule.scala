@@ -19,7 +19,7 @@ package quasar.destination.h2
 import slamdata.Predef._
 import quasar.api.destination.{DestinationError => DE, _}
 import quasar.concurrent._
-import quasar.connector.MonadResourceErr
+import quasar.connector.{GetAuth, MonadResourceErr}
 import quasar.connector.destination.{Destination, DestinationModule, PushmiPullyu}
 import quasar.destination.h2.server.H2Server
 
@@ -58,7 +58,8 @@ object H2DestinationModule extends DestinationModule with Logging {
 
   def destination[F[_]: ConcurrentEffect: ContextShift: MonadResourceErr: Timer](
       config: Json,
-      pushPull: PushmiPullyu[F])
+      pushPull: PushmiPullyu[F],
+      auth: GetAuth[F])
       : Resource[F, Either[InitErr, Destination[F]]] = {
 
     val cfg0: Either[InitErr, Config] =
