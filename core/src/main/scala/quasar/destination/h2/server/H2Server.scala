@@ -33,7 +33,7 @@ object H2Server extends Logging {
   def apply[F[_]: ContextShift: Sync](config: ServerConfig, blocker: Blocker)
       : Resource[F, Unit] =
     for {
-      ini <- config.init.traverse_(i => Resource.liftF(init[F](i, blocker)))
+      ini <- config.init.traverse_(i => Resource.eval(init[F](i, blocker)))
       tcp <- config.tcp.traverse_(tcpServer[F](_).void)
       pg <- config.pg.traverse_(pgServer[F](_).void)
     } yield pg
